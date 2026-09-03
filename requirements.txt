@@ -1,0 +1,2 @@
+# No external runtime dependencies; requires Python 3.9+
+# If you add packages, pin them here (pip install -r requirements.txt)
