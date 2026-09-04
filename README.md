@@ -123,9 +123,7 @@ to an internal Snowflake stage before running the `COPY INTO` statements in
 SQL 02. After upstream data or survivorship-rule changes re-run SQL 07 so
 CORE reads refreshed snapshots.
 
-Prerequisites: a Python environment compatible with `requirements.txt`, a
-Snowflake account with privileges to create the documented objects, and the
-ability to upload files to an internal stage.
+Prerequisites: Python 3.9 or later, a Snowflake account with privileges to create the documented objects, and the ability to upload files to a Snowflake internal stage. The Python generator and validation scripts use only the standard library; no third-party Python packages are required.
 
 ## Performance
 
