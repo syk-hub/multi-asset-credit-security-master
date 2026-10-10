@@ -1,0 +1,81 @@
+Batch 02 actual assertion results
+Snowflake execution date: October 9, 2026 (Pacific time)
+
+Report provenance: This is a copied CoCo report, not a direct Snowflake result
+export. It records the supplied result table and summary. Preparation checks
+are listed separately from the 24 scenario assertions.
+
+Preparation checks
+
+Check         Expected Rows  Actual Rows  Status
+RAW_ALPHA     14            14           PASS
+RAW_BETA      10            10           PASS
+RAW_LEGACY    7             7            PASS
+STAGING_TOTAL 31            31           PASS
+
+Scenario assertions
+
+#   Assertion  Case    Check                         Expected Result
+1   B02-01-A   B02-01  Matching status               One group; all three source rows CROSS_SOURCE_MATCH
+2   B02-01-B   B02-01  Issuer/name/type/rating       B02-ISSUER-CASE01; B02-ISSUER-CASE01 NOTE; BOND; BBB
+3   B02-02-A   B02-02  Matching status               All three rows share one CROSS_SOURCE_MATCH group
+4   B02-02-B   B02-02  Instrument-name majority      Consensus name; DISTINCT_SOURCE_MAJORITY; source count 2
+5   B02-02-C   B02-02  Majority lineage              Beta and Legacy support
+6   B02-03-A   B02-03  Rating decision               NULL; UNRESOLVED; UNRESOLVED_SUPPORT_TIE
+7   B02-03-B   B02-03  CORE status                   REVIEW_REQUIRED
+8   B02-03-C   B02-03  Rating lineage                No selected-value rating lineage rows
+9   B02-04-A   B02-04  Legacy candidate              Invalid and null currency candidate
+10  B02-04-B   B02-04  Currency tie                  NULL; UNRESOLVED_SUPPORT_TIE; EUR and USD
+11  B02-05-A   B02-05  Invalid candidate             Alpha ZZZ is invalid
+12  B02-05-B   B02-05  Currency decision             CORE and decision currency GBP
+13  B02-06-A   B02-06  Canonical candidates           Alpha, Beta, and Legacy canonicalize to CLO_TRANCHE
+14  B02-06-B   B02-06  Type survivorship              Selected instrument_type CLO_TRANCHE
+15  B02-07-A   B02-07  Invalid date DQ                DQ006 for B02-ALPHA-CASE07-INVALID
+16  B02-07-B   B02-07  Latest valid date              2022-05-06; LATEST_VALID_DATE
+17  B02-08-A   B02-08  Matching status                SINGLE_SOURCE_ONLY
+18  B02-08-B   B02-08  CORE status                    PROVISIONAL_SINGLE_SOURCE
+19  B02-09-A   B02-09  DQ003                          One DQ003 row
+20  B02-09-B   B02-09  Matching and eligibility       NONE; NO_IDENTIFIER; no candidate
+21  B02-10-A   B02-10  Collision split                Distinct ISIN keys for Alpha and Beta
+22  B02-10-B   B02-10  Legacy ambiguity               AMBIGUOUS_IDENTIFIER; no candidate
+23  B02-11-A   B02-11  DQ011 detection                Two DQ011 rows
+24  B02-12-A   B02-12  One assignment per physical row Every staging row has exactly one assignment
+
+#   Actual Result                                                        Status
+1   1 group; 3 cross-source assignment rows                              PASS
+2   B02-ISSUER-CASE01; B02-ISSUER-CASE01 NOTE; BOND; BBB                  PASS
+3   1 group; 3 cross-source rows                                         PASS
+4   B02-ISSUER-CASE02 CONSENSUS NAME; DISTINCT_SOURCE_MAJORITY; count 2   PASS
+5   LEGACY, VENDOR_BETA                                                   PASS
+6   NULL; UNRESOLVED; UNRESOLVED_SUPPORT_TIE                              PASS
+7   REVIEW_REQUIRED                                                      PASS
+8   0 lineage rows                                                       PASS
+9   false; null                                                         PASS
+10  NULL; UNRESOLVED_SUPPORT_TIE; EUR, USD                               PASS
+11  false; Outside project-approved currency domain                      PASS
+12  GBP; decision GBP                                                    PASS
+13  CLO_TRANCHE                                                          PASS
+14  CLO_TRANCHE                                                          PASS
+15  1                                                                      PASS
+16  2022-05-06; LATEST_VALID_DATE                                        PASS
+17  SINGLE_SOURCE_ONLY                                                   PASS
+18  PROVISIONAL_SINGLE_SOURCE                                             PASS
+19  1                                                                      PASS
+20  NONE; NO_IDENTIFIER; candidate rows 0                                 PASS
+21  ISIN_COLLISION_SPLIT; CASE10-A | ISIN_COLLISION_SPLIT; CASE10-B      PASS
+22  AMBIGUOUS_IDENTIFIER; candidate rows 0                               PASS
+23  2                                                                      PASS
+24  2 physical rows non-unique; 31 staging rows; 33 assignments          FAIL
+
+Summary
+
+Scenario assertions: 23 PASS, 1 FAIL.
+The sole failure is B02-12-A. The observed assignment diagnostics show
+B02-ALPHA-CASE12 at vendor_alpha.json row 14 and
+B02-BETA-CASE12-ISIN-ONLY at vendor_beta.json row 10 each received two
+assignments. Do not interpret the shared grouping as making duplicate
+assignments acceptable.
+
+Preparation checks (reported separately): 4 PASS.
+These report entries are copied CoCo results, not direct result exports.
+No claim is made here that all scenario assertions passed.

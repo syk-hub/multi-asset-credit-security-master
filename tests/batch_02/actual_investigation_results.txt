@@ -1,0 +1,88 @@
+All three results are already available from prior query runs. Here they are:
+
+1. CASE12: Duplicated physical rows and assignment counts
+
+From the query SELECT vendor_security_id, source_file, source_row_number, load_ts, COUNT(*) AS assignment_count ... HAVING COUNT(*) > 1:
+
+Vendor Security ID	Source File	Row	Assignment Count
+B02-ALPHA-CASE12	batch_02/vendor_alpha.json	14	2
+B02-BETA-CASE12-ISIN-ONLY	batch_02/vendor_beta.json	10	2
+The B02-12 diagnostic showed the underlying assignments:
+
+Source System	Vendor Security ID	Row	Match Key Type	Match Key Value	Match Group Key	Match Status
+VENDOR_BETA	B02-BETA-CASE12	9	ISIN_COLLISION_SPLIT	B02-ISIN-CASE12-OTHER	ISIN|B02-ISIN-CASE12-OTHER	SINGLE_SOURCE_ONLY
+VENDOR_ALPHA	B02-ALPHA-CASE12	14	ISIN_COLLISION_SPLIT	B02-ISIN-CASE12-SHARED	ISIN|B02-ISIN-CASE12-SHARED	SINGLE_SOURCE_ONLY
+VENDOR_ALPHA	B02-ALPHA-CASE12	14	ISIN_COLLISION_SPLIT	B02-ISIN-CASE12-SHARED	ISIN|B02-ISIN-CASE12-SHARED	SINGLE_SOURCE_ONLY
+VENDOR_BETA	B02-BETA-CASE12-ISIN-ONLY	10	ISIN	B02-ISIN-CASE12-SHARED	ISIN|B02-ISIN-CASE12-SHARED	SINGLE_SOURCE_ONLY
+VENDOR_BETA	B02-BETA-CASE12-ISIN-ONLY	10	ISIN	B02-ISIN-CASE12-SHARED	ISIN|B02-ISIN-CASE12-SHARED	SINGLE_SOURCE_ONLY
+Row 14 (ALPHA-CASE12) and row 10 (BETA-CASE12-ISIN-ONLY) each appear twice with identical match_group_key, match_key_value, and match_status. The B02-12-A assertion failed because the one-assignment-per-physical-row invariant is violated for these 2 rows.
+
+2. Decision reconciliation
+
+From the reconciliation proof query:
+
+Distinct Groups	Total Decisions	Expected Total (groups × 16)	Matches Expected
+13	256	208	FALSE
+256 − 208 = 48 excess decision rows. The decision grid is formed by eligible_groups CROSS JOIN attribute_list(16). The 13 distinct match_group_key values should produce 208 rows, but the view generates additional eligible_groups entries — the ISIN collision-split and shared-ISIN groups contribute duplicate rows through the join to group_metrics, inflating the cross-join base beyond 13.
+
+3. CASE11: Decision support counts and selected-value lineage
+
+From the B02-11 survivorship/core summary diagnostic:
+
+Candidate Rows	Decision Groups	Core Rows
+32	1	1
+32 candidate rows for a single match group with 2 physical source records (rows 12 and 13, both with source_record_key = VENDOR_ALPHA|B02-ALPHA-CASE11) — each physical row contributes 16 attribute candidates, so 2 × 16 = 32.
+
+The B02-11 assignment layer showed both duplicate rows assigned to the same group:
+
+Source File	Row	Source Record Key	Match Key Type	Match Key Value	Match Status
+batch_02/vendor_alpha.json	12	VENDOR_ALPHA|B02-ALPHA-CASE11	CUSIP	B02-CUSIP-CASE11	SINGLE_SOURCE_ONLY
+batch_02/vendor_alpha.json	13	VENDOR_ALPHA|B02-ALPHA-CASE11	CUSIP	B02-CUSIP-CASE11	SINGLE_SOURCE_ONLY
+The B02-11 decision and lineage diagnostic queries were prepared but not executed in the prior run. Let me run them now.
+
+Ran 2 queries
+
+
+3a. CASE11 Decision support counts (16 decisions for match group CUSIP|B02-CUSIP-CASE11):
+
+Attribute	Selected Value	Status	Method	Valid Candidates	Distinct Values	Source Count
+coupon_rate	5.0000	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+coupon_type	FIXED	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+credit_status	PERFORMING	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+currency	USD	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+effective_from	2020-01-01	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+instrument_name	B02-ISSUER-CASE11 NOTE	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+instrument_type	BOND	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+issue_date	2020-01-01	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+issuer_name	B02-ISSUER-CASE11	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+maturity_date	2030-01-01	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+rating	BBB	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+rating_agency	B02-RATING-AGENCY	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+secured_flag	true	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+seniority	Senior Secured	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+synthetic_cusip	B02-CUSIP-CASE11	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+synthetic_isin	B02-ISIN-CASE11	RESOLVED	UNANIMOUS_OR_SINGLE_VALUE	2	1	1
+Every attribute shows valid_candidate_count = 2 and selected_value_source_count = 1. The duplicate source rows (rows 12 and 13, both VENDOR_ALPHA|B02-ALPHA-CASE11) are both counted as valid candidates. The distinct_valid_value_count is 1 and selected_value_source_count is 1 because both rows share the same source_system, so COUNT(DISTINCT source_system) = 1. However, the valid_candidate_count = 2 reflects the duplicate physical rows contributing to the support calculation.
+
+3b. CASE11 Selected-value lineage (32 lineage rows — 16 attributes × 2 physical rows):
+
+Every attribute produces 2 lineage rows, one for row 12 and one for row 13:
+
+Attribute	Selected Value	Source Row 12	Source Row 13
+coupon_rate	5.0000	5 → 5.0000	5 → 5.0000
+coupon_type	FIXED	FIXED → FIXED	FIXED → FIXED
+credit_status	PERFORMING	PERFORMING	PERFORMING
+currency	USD	USD	USD
+effective_from	2020-01-01	2020-01-01	2020-01-01
+instrument_name	B02-ISSUER-CASE11 NOTE	same	same
+instrument_type	BOND	same	same
+issue_date	2020-01-01	same	same
+issuer_name	B02-ISSUER-CASE11	same	same
+maturity_date	2030-01-01	same	same
+rating	BBB	same	same
+rating_agency	B02-RATING-AGENCY	same	same
+secured_flag	true	same	same
+seniority	Senior Secured	same	same
+synthetic_cusip	B02-CUSIP-CASE11	same	same
+synthetic_isin	B02-ISIN-CASE11	same	same
+Both duplicate physical rows appear in the lineage for every attribute. The DQ011 rule flagged the duplicate source_record_key, but the duplicate rows still flow through into candidates, decisions, and lineage — inflating valid_candidate_count and doubling lineage rows for this match group.
